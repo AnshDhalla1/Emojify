@@ -1,0 +1,54 @@
+from keras.models import load_model						// for genrating training model
+from time import sleep
+from keras.preprocessing.image import img_to_array
+from keras.preprocessing import image
+import cv2											// For image processing
+import numpy as np
+
+face_classifier = cv2.CascadeClassifier(r'C:\Python37\Projects\Live Project\haarcascade_frontalface_default.xml')	// This one we use to detect the face
+classifier =load_model(r'C:\Python37\Projects\Live Project\Emotion_little_vgg.h5')					// This is our training model 
+
+class_labels = ['Angry','Happy','Neutral','Sad','Surprise']
+
+## From here Camera work will start ##
+
+cap = cv2.VideoCapture(0)					// This is all about taking the inputs from the camera & recognizing the emotions (0= Inbuilt camera, 1= external camera)
+
+
+
+while True:							// If camera is present then grab the face (If camera present is True)
+    # Grab a single frame of video
+    ret, frame = cap.read()					// Read the camera & name it as frame (means Grab a single frame of video & Return it to this variable named 'Frame')
+    labels = []
+    gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)		// Here we defined what is gray.Convert our input frame into Grayscale image (so that it is easy to recognize face & expressions after color is not present)
+    faces = face_classifier.detectMultiScale(gray,1.3,5)	// Scale down the input image or frame
+
+    for (x,y,w,h) in faces:						// Draw the rectangle around the face (x,y,w,h represents the sides of the rectangle)
+        cv2.rectangle(frame,(x,y),(x+w,y+h),(255,0,0),2)		// (255,0,0) = (B,G,R) - So our rectangle will be Blue in color & 2 = thickness of the rectangle
+        roi_gray = gray[y:y+h,x:x+w]					// Here we are actually converting it to gray.
+        roi_gray = cv2.resize(roi_gray,(48,48),interpolation=cv2.INTER_AREA)			// Resize it 48*48
+    # rect,face,image = face_detector(frame)
+
+
+        if np.sum([roi_gray])!=0:					// If that roi region has atleast 1 face.
+            roi = roi_gray.astype('float')/255.0			// To reduce the pixel size, we are dividing it by 255. Because max. pixel size of any image is 255.
+            roi = img_to_array(roi)					// Converting it into array for let's say mathematical calculations
+            roi = np.expand_dims(roi,axis=0)
+
+        # make a prediction on the ROI, then lookup the class
+
+            preds = classifier.predict(roi)[0]					// Predict the Emotion (ROI = Region of interest)
+            label=class_labels[preds.argmax()]
+            label_position = (x,y)
+            cv2.putText(frame,label,label_position,cv2.FONT_HERSHEY_SIMPLEX,2,(0,255,0),3)			// And then put the text
+        else:
+            cv2.putText(frame,'No Face Found',(20,60),cv2.FONT_HERSHEY_SIMPLEX,2,(0,255,0),3)			// If there is no found then put No Face Found
+    cv2.imshow('Emotion Detector',frame)							// Now just show the frame and name it as Emotion Detector
+    if cv2.waitKey(1) & 0xFF == ord('q'):							// If you press 'q' then only frame will stop otherwise it wont
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+
+
+### ​interpolation means estimating unknown values that fall between known values i.e finding value of a pixel based on its neighbouring pixels. ###
